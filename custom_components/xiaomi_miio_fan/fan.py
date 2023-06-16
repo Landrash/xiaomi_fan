@@ -78,6 +78,7 @@ MODEL_FAN_P11 = "dmaker.fan.p11"  # Mijia Pedestal Fan
 MODEL_FAN_P15 = "dmaker.fan.p15"  # Pedestal Fan Fan P15
 MODEL_FAN_P18 = "dmaker.fan.p18"  # Mi Smart Standing Fan 2
 MODEL_FAN_P33 = "dmaker.fan.p33"  # Mi Smart Standing Fan Pro 2
+MODEL_FAN_P39 = "dmaker.fan.p39"  # Xiaomi Smart Tower Fan
 MODEL_FAN_LESHOW_SS4 = "leshow.fan.ss4"
 MODEL_FAN_1C = "dmaker.fan.1c"  # Pedestal Fan Fan 1C
 
@@ -103,6 +104,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                 MODEL_FAN_P15,
                 MODEL_FAN_P18,
                 MODEL_FAN_P33,
+                MODEL_FAN_P39,
                 MODEL_FAN_LESHOW_SS4,
                 MODEL_FAN_1C,
             ]
@@ -177,7 +179,6 @@ AVAILABLE_ATTRIBUTES_FAN_P5 = {
     ATTR_RAW_SPEED: "speed",
 }
 
-
 AVAILABLE_ATTRIBUTES_FAN_P33 = {
     ATTR_MODE: "mode",
     ATTR_OSCILLATE: "oscillate",
@@ -188,6 +189,16 @@ AVAILABLE_ATTRIBUTES_FAN_P33 = {
     ATTR_CHILD_LOCK: "child_lock",
     ATTR_RAW_SPEED: "speed",
 }
+
+AVAILABLE_ATTRIBUTES_FAN_P39 = {
+    ATTR_MODE: "mode",
+    ATTR_OSCILLATE: "oscillate",
+    ATTR_ANGLE: "angle",
+    ATTR_DELAY_OFF_COUNTDOWN: "delay_off_countdown",
+    ATTR_LED: "led",
+    ATTR_BUZZER: "buzzer",
+    ATTR_CHILD_LOCK: "child_lock",
+    ATTR_RAW_SPEED: "speed",
 
 AVAILABLE_ATTRIBUTES_FAN_LESHOW_SS4 = {
     ATTR_MODE: "mode",
