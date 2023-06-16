@@ -294,6 +294,14 @@ FAN_PRESET_MODES_P33 = {
     FAN_SPEED_LEVEL4: 100,
 }
 
+FAN_PRESET_MODES_P39 = {
+    SPEED_OFF: 0,
+    FAN_SPEED_LEVEL1: 1,
+    FAN_SPEED_LEVEL2: 35,
+    FAN_SPEED_LEVEL3: 70,
+    FAN_SPEED_LEVEL4: 100,
+}
+
 FAN_SPEEDS_1C = list(FAN_PRESET_MODES_1C)
 FAN_SPEEDS_1C.remove(SPEED_OFF)
 
@@ -301,8 +309,8 @@ FAN_SPEEDS_1C.remove(SPEED_OFF)
 FAN_SPEEDS_ZA5 = list(FAN_PRESET_MODES_ZA5)
 FAN_SPEEDS_ZA5.remove(SPEED_OFF)
 
-FAN_SPEEDS_P33 = list(FAN_PRESET_MODES_P33)
-FAN_SPEEDS_P33.remove(SPEED_OFF)
+FAN_SPEEDS_P39 = list(FAN_PRESET_MODES_P39)
+FAN_SPEEDS_P39.remove(SPEED_OFF)
 
 SUCCESS = ["ok"]
 
@@ -343,6 +351,14 @@ FEATURE_FLAGS_FAN_ZA5 = (
 )
 
 FEATURE_FLAGS_FAN_P33 = (
+    FEATURE_SET_BUZZER
+    | FEATURE_SET_CHILD_LOCK
+    | FEATURE_SET_LED
+    | FEATURE_SET_OSCILLATION_ANGLE
+    | FEATURE_SET_NATURAL_MODE
+)
+
+FEATURE_FLAGS_FAN_P39 = (
     FEATURE_SET_BUZZER
     | FEATURE_SET_CHILD_LOCK
     | FEATURE_SET_LED
@@ -488,6 +504,11 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     elif model == MODEL_FAN_P33:
         fan = FanP33(host, token, model=model)
         device = XiaomiFanP33(
+            name, fan, model, unique_id, retries, preset_modes_override
+        )
+    elif model == MODEL_FAN_P39:
+        fan = FanP39(host, token, model=model)
+        device = XiaomiFanP39(
             name, fan, model, unique_id, retries, preset_modes_override
         )
     else:
@@ -1828,7 +1849,7 @@ class XiaomiFanP33(XiaomiFanMiot):
         self._state_attrs.update(
             {attribute: None for attribute in self._available_attributes}
         )
-
+    
     @property
     def supported_features(self) -> int:
         return (
@@ -2103,6 +2124,313 @@ class FanP33(MiotDevice):
     def set_rotate(self, direction: FanMoveDirection):
         """Rotate fan 7.5 degrees horizontally to given direction."""
         # Values for P33
+        # { "value": 0, "description": "NONE" },
+        # { "value": 1, "description": "LEFT" },
+        # { "value": 2, "description": "RIGHT" }
+        value = 0
+        if direction == FanMoveDirection.Left:
+            value = 1
+        elif direction == FanMoveDirection.Right:
+            value = 2
+        return self.set_property("motor_control", value)
+
+class XiaomiFanP39(XiaomiFanMiot):
+    """Representation of a Xiaomi Smart Tower Fan P39."""
+
+    def __init__(self, name, device, model, unique_id, retries, preset_modes_override):
+        """Initialize the fan entity."""
+        super().__init__(name, device, model, unique_id, retries, preset_modes_override)
+
+        self._device_features = FEATURE_FLAGS_FAN_P39
+        self._available_attributes = AVAILABLE_ATTRIBUTES_FAN_P39
+        self._percentage = None
+        self._preset_modes = list(FAN_PRESET_MODES_P39)
+        if preset_modes_override is not None:
+            self._preset_modes = preset_modes_override
+
+        self._preset_mode = None
+        self._oscillate = None
+        self._natural_mode = False
+
+        self._state_attrs.update(
+            {attribute: None for attribute in self._available_attributes}
+        )
+
+    
+    @property
+    def supported_features(self) -> int:
+        return (
+            SUPPORT_DIRECTION
+            | SUPPORT_OSCILLATE
+            | SUPPORT_PRESET_MODE
+            | SUPPORT_SET_SPEED
+        )
+
+    """
+    TODO:
+    - fan.turn_on works, but doesn't go to the declared percentage. This is
+      not an issue when using set_percentage()
+    - setting child lock works, but HA always reads the value as null
+    """
+
+    async def async_update(self):
+        if self._skip_update:
+            self._skip_update = False
+            return
+
+        try:
+            state = await self.hass.async_add_job(self._device.status)
+            _LOGGER.debug("Got new state: %s", state)
+
+            self._available = True
+            self._percentage = state.fan_speed
+            self._oscillate = state.oscillate
+            self._natural_mode = state.mode == OperationModeFanP39.Nature
+            self._state = state.power
+
+            for preset_mode, value in FAN_PRESET_MODES_P39.items():
+                if state.fan_level == value:
+                    self._preset_mode = preset_mode
+                    break
+
+            self._state_attrs.update(
+                {
+                    key: self._extract_value_from_attribute(state, value)
+                    for key, value in self._available_attributes.items()
+                    if hasattr(state, value)
+                }
+            )
+            self._retry = 0
+
+        except DeviceException as ex:
+            self._retry = self._retry + 1
+            if self._retry < self._retries:
+                _LOGGER.info(
+                    "%s Got exception while fetching the state: %s , _retry=%s",
+                    self.__class__.__name__,
+                    ex,
+                    self._retry,
+                )
+            else:
+                self._available = False
+                _LOGGER.error(
+                    "%s Got exception while fetching the state: %s , _retry=%s",
+                    self.__class__.__name__,
+                    ex,
+                    self._retry,
+                )
+
+    @property
+    def percentage(self) -> Optional[int]:
+        return self._percentage
+
+    @property
+    def speed_count(self) -> int:
+        return len(FAN_SPEEDS_P39)
+
+    @property
+    def preset_modes(self):
+        return self._preset_modes
+
+    @property
+    def preset_mode(self):
+        if self._state:
+            return self._preset_mode
+        return None
+
+    async def async_set_natural_mode_on(self):
+        """Turn the natural mode on."""
+        if self._device_features & FEATURE_SET_NATURAL_MODE == 0:
+            return
+
+        await self._try_command(
+            "Setting fan natural mode of the miio device failed.",
+            self._device.set_mode,
+            OperationModeFanP39.Nature,
+        )
+
+    async def async_set_natural_mode_off(self):
+        """Turn the natural mode off."""
+        if self._device_features & FEATURE_SET_NATURAL_MODE == 0:
+            return
+
+        await self._try_command(
+            "Setting fan natural mode of the miio device failed.",
+            self._device.set_mode,
+            OperationModeFanP39.Normal,
+        )
+
+
+class OperationModeFanP39(Enum):
+    Normal = 0
+    Nature = 1
+
+
+class FanStatusP39(DeviceStatus):
+    """Container for status reports for FanP39."""
+
+    def __init__(self, data: Dict[str, Any]) -> None:
+        """
+        Response of a Fan (dmaker.fan.P39, fw: 2.05):
+
+        {'did': 'power', 'siid': 2, 'piid': 1, 'code': 0, 'value': True},
+        {'did': 'fan_level', 'siid': 2, 'piid': 2, 'code': 0, 'value': 1},
+        {'did': 'oscillate', 'siid': 2, 'piid': 4, 'code': 0, 'value': False},
+        {'did': 'angle', 'siid': 2, 'piid': 5, 'code': 0, 'value': 120},
+        {'did': 'mode', 'siid': 2, 'piid': 3, 'code': 0, 'value': 1},
+        {'did': 'delay_off_countdown', 'siid': 3, 'piid': 1, 'code': 0, 'value': 0},
+        {'did': 'child_lock', 'siid': 7, 'piid': 1, 'code': 0, 'value': False},
+        {'did': 'light', 'siid': 4, 'piid': 1, 'code': 0, 'value': True},
+        {'did': 'buzzer', 'siid': 5, 'piid': 1, 'code': 0, 'value': True},
+        {'did': 'motor_control', 'siid': 6, 'piid': 1, 'code': -4003},
+        {'did': 'speed', 'siid': 2, 'piid': 6, 'code': 0, 'value': 20},
+        """
+        self.data = data
+
+    @property
+    def buzzer(self) -> bool:
+        return self.data["buzzer"]
+
+    @property
+    def child_lock(self) -> bool:
+        return self.data["child_lock"]
+
+    @property
+    def fan_level(self) -> int:
+        return self.data["fan_level"]
+
+    @property
+    def fan_speed(self) -> int:
+        return self.data["speed"]
+
+    @property
+    def light(self) -> bool:
+        return self.data["light"]
+
+    @property
+    def led(self) -> bool:
+        return self.light
+
+    @property
+    def mode(self) -> str:
+        return OperationModeFanP39(self.data["mode"]).name
+
+    @property
+    def power(self) -> bool:
+        return self.data["power"]
+
+    @property
+    def delay_off_countdown(self) -> int:
+        return self.data["delay_off_countdown"]
+
+    @property
+    def oscillate(self) -> bool:
+        return self.data["oscillate"]
+
+    @property
+    def angle(self) -> int:
+        return self.data["angle"]
+
+
+class FanP39(MiotDevice):
+    mapping = {
+        # https://miot-spec.org/miot-spec-v2/instance?type=urn:miot-spec-v2:device:fan:0000A005:dmaker-p39:1
+        "power": {"siid": 2, "piid": 1},
+        "fan_level": {"siid": 2, "piid": 2},
+        "oscillate": {"siid": 2, "piid": 4},
+        "angle": {"siid": 2, "piid": 5},
+        "mode": {"siid": 2, "piid": 3},
+        "delay_off_countdown": {"siid": 3, "piid": 1},
+        "child_lock": {"siid": 7, "piid": 1},
+        "light": {"siid": 4, "piid": 1},
+        "buzzer": {"siid": 5, "piid": 1},
+        "motor_control": {"siid": 6, "piid": 1},
+        "speed": {"siid": 2, "piid": 6},
+    }
+
+    def __init__(
+        self,
+        ip: str = None,
+        token: str = None,
+        start_id: int = 0,
+        debug: int = 0,
+        lazy_discover: bool = True,
+        model: str = MODEL_FAN_P39,
+    ) -> None:
+        super().__init__(ip, token, start_id, debug, lazy_discover, model=model)
+
+    def status(self):
+        """Retrieve properties."""
+        return FanStatusP39(
+            {
+                prop["did"]: prop["value"] if prop["code"] == 0 else None
+                for prop in self.get_properties_for_mapping()
+            }
+        )
+
+    def on(self):
+        """Power on."""
+        return self.set_property("power", True)
+
+    def off(self):
+        """Power off."""
+        return self.set_property("power", False)
+
+    def set_speed(self, speed: int):
+        """Set fan speed."""
+        if speed < 0 or speed > 100:
+            raise FanException("Invalid speed: %s" % speed)
+
+        return self.set_property("speed", speed)
+
+    def set_angle(self, angle: int):
+        """Set the oscillation angle."""
+        if angle not in [30, 60, 90, 120, 140]:
+            raise FanException(
+                "Unsupported angle. Supported values: "
+                + ", ".join("{0}".format(i) for i in [30, 60, 90, 120, 140])
+            )
+
+        return self.set_property("angle", angle)
+
+    def set_oscillate(self, oscillate: bool):
+        """Set oscillate on/off."""
+        if oscillate:
+            return self.set_property("oscillate", True)
+        else:
+            return self.set_property("oscillate", False)
+
+    def set_buzzer(self, buzzer: bool):
+        """Set buzzer on/off."""
+        if buzzer:
+            return self.set_property("buzzer", True)
+        else:
+            return self.set_property("buzzer", False)
+
+    def set_child_lock(self, lock: bool):
+        """Set child lock on/off."""
+        self.status()
+        return self.set_property("child_lock", lock)
+
+    def set_light(self, light: bool):
+        """Set indicator state."""
+        return self.set_property("light", light)
+
+    def set_mode(self, mode: OperationModeFanP39):
+        """Set mode."""
+        return self.set_property("mode", OperationModeFanP39[mode.name].value)
+
+    def delay_off(self, minutes: int):
+        """Set delay off minutes."""
+
+        if minutes < 0 or minutes > 480:
+            raise FanException("Invalid value for a delayed turn off: %s" % minutes)
+
+        return self.set_property("delay_off_countdown", minutes)
+
+    def set_rotate(self, direction: FanMoveDirection):
+        """Rotate fan 7.5 degrees horizontally to given direction."""
+        # Values for P39
         # { "value": 0, "description": "NONE" },
         # { "value": 1, "description": "LEFT" },
         # { "value": 2, "description": "RIGHT" }
