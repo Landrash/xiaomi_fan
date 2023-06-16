@@ -482,7 +482,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         device = XiaomiFanMiot(
             name, fan, model, unique_id, retries, preset_modes_override
         )
-        else:
+    else:
         _LOGGER.error(
             "Unsupported device found! Please create an issue at "
             "https://github.com/syssi/xiaomi_fan/issues "
