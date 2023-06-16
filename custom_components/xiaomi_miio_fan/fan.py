@@ -199,6 +199,7 @@ AVAILABLE_ATTRIBUTES_FAN_P39 = {
     ATTR_BUZZER: "buzzer",
     ATTR_CHILD_LOCK: "child_lock",
     ATTR_RAW_SPEED: "speed",
+}
 
 AVAILABLE_ATTRIBUTES_FAN_LESHOW_SS4 = {
     ATTR_MODE: "mode",
