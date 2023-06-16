@@ -2027,18 +2027,18 @@ class FanStatusP33(DeviceStatus):
 
 class FanP33(MiotDevice):
     mapping = {
-        # https://miot-spec.org/miot-spec-v2/instance?type=urn:miot-spec-v2:device:fan:0000A005:dmaker-p33:1
+        # https://home.miot-spec.com/spec?type=urn:miot-spec-v2:device:fan:0000A005:dmaker-p39:1
         "power": {"siid": 2, "piid": 1},
         "fan_level": {"siid": 2, "piid": 2},
-        "oscillate": {"siid": 2, "piid": 4},
-        "angle": {"siid": 2, "piid": 5},
-        "mode": {"siid": 2, "piid": 3},
-        "delay_off_countdown": {"siid": 3, "piid": 1},
-        "child_lock": {"siid": 7, "piid": 1},
-        "light": {"siid": 4, "piid": 1},
-        "buzzer": {"siid": 5, "piid": 1},
-        "motor_control": {"siid": 6, "piid": 1},
-        "speed": {"siid": 2, "piid": 6},
+        "oscillate": {"siid": 2, "piid": 5},
+        "angle": {"siid": 2, "piid": 6},
+        "mode": {"siid": 2, "piid": 4},
+        "delay_off_countdown": {"siid": 2, "piid": 8},
+        "child_lock": {"siid": 3, "piid": 1},
+        "light": {"siid": 2, "piid": 9},
+        "buzzer": {"siid": 2, "piid": 7},
+        "motor_control": {"siid": 2, "piid": 10},
+        "speed": {"siid": 2, "piid": 11},
     }
 
     def __init__(
@@ -2337,15 +2337,16 @@ class FanP39(MiotDevice):
         # https://miot-spec.org/miot-spec-v2/instance?type=urn:miot-spec-v2:device:fan:0000A005:dmaker-p39:1
         "power": {"siid": 2, "piid": 1},
         "fan_level": {"siid": 2, "piid": 2},
-        "oscillate": {"siid": 2, "piid": 4},
-        "angle": {"siid": 2, "piid": 5},
-        "mode": {"siid": 2, "piid": 3},
-        "delay_off_countdown": {"siid": 3, "piid": 1},
-        "child_lock": {"siid": 7, "piid": 1},
-        "light": {"siid": 4, "piid": 1},
-        "buzzer": {"siid": 5, "piid": 1},
-        "motor_control": {"siid": 6, "piid": 1},
-        "speed": {"siid": 2, "piid": 6},
+        "oscillate": {"siid": 2, "piid": 5}, 
+        "angle": {"siid": 2, "piid": 6},
+        "mode": {"siid": 2, "piid": 4},
+        "delay_off_countdown": {"siid": 2, "piid": 8},
+        "child_lock": {"siid": 3, "piid": 1},
+        "light": {"siid": 2, "piid": 9},
+        "buzzer": {"siid": 2, "piid": 7},
+        "motor_control": {"siid": 2, "piid": 10},
+        "speed": {"siid": 2, "piid": 11},
+            
     }
 
     def __init__(
