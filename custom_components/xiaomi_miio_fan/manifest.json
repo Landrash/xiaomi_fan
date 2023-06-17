@@ -10,7 +10,7 @@
   "issue_tracker": "https://github.com/syssi/xiaomi_fan/issues",
   "requirements": [
     "construct==2.10.56",
-    "python-miio>=0.5.12"
+    "git+https://github.com/Landrash/python-miio"
   ],
   "version": "2023.6.0.0"
 }
